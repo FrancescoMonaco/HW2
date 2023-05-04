@@ -1,5 +1,5 @@
 '''
-HW1 - Group 47
+HW2 - Group 47
   Alessandro Lucchiari
   Lorenzo Riccò
   Francesco Pio Monaco
@@ -51,29 +51,12 @@ def MR_ApproxTCwithNodeColors(edges, C):
     return C**2*((partial_count.take(1)[0])[1]) 
 
 # Function 2 
-def MR_ApproxTCwithSparkPartitions(edges, C):
-
-   # Function to move in the iterator given by mapPartitions
-  def f(iterator): 
-    c = list(iterator)
-    if len(c) == 0: # If the partition is empty
-      return [(0,0)]
-    for el in c:
-      if el is None:
-        return [(0,0)]
-      else:
-        return [(0,CountTriangles(list(el[1])))]
-
-
-  partial_count = (edges.groupByKey() # ((rand.randint(0,C-1), list of edges)])
-                        .mapPartitions(f) #[(0, CountTriangles(x[1]))])
-                        .reduceByKey(add)
-                        )
-  return (list(partial_count.take(5))[0][1])
+def MR_ExactTC(edges, C):
+  pass
 
 def main():
     # CHECKING NUMBER OF CMD LINE PARAMTERS
-    assert len(sys.argv) == 4, "Usage: python G047HW1.py <C> <R> <file_name>"
+    assert len(sys.argv) == 4, "Usage: python G047HW2.py <C> <R> <file_name>"
     # SPARK SETUP
     conf = SparkConf().setAppName('TriangleCount')
     sc = SparkContext(conf=conf)
@@ -81,6 +64,7 @@ def main():
     assert sys.argv[1].isdigit(), "C must be an int"
     assert sys.argv[2].isdigit(), "R must be an int"
     # Take the parameters
+    part = 16 # Base num of partitions
     C = int(sys.argv[1])
     R = int(sys.argv[2])
     data_path = sys.argv[3]
@@ -88,7 +72,7 @@ def main():
     # Load the input as an RDD textfile
     rawData = sc.textFile(data_path)
     # Transform into a (key,edge) RDD where edge is tuple of ints
-    edges = rawData.map(lambda line: ((rand.randint(0,C-1)), tuple(map(int, line.split(",")))))
+    edges = rawData.map(lambda line: ((rand.randint(0,part-1)), tuple(map(int, line.split(",")))))
     edges = edges.repartition(C).cache()
     
     # Node color partitions
@@ -106,11 +90,20 @@ def main():
         #*1000 from sec to ms, int to truncate the value
     time_estimate_NC = int(mean(times_NC)*1000)
     
-    # Spark partitions
-    start = time.time()
-    triangle_estimate_Spark = C**2*(MR_ApproxTCwithSparkPartitions(edges, C))
-    end = time.time()
-    time_estimate_Spark = int((end-start)*1000)
+    # Exact count
+      # Data structures for saving the results
+    results_EC = []
+    times_EC = []
+      #Execution
+    for i in range(R):
+        start = time.time()
+        results_NC.append(MR_ExactTC(edges, C))
+        end = time.time()
+        times_EC.append(end-start)
+      #Results
+    triangle_exact = results_EC[-1]
+        #*1000 from sec to ms, int to truncate the value
+    time_estimate_EC = int(mean(times_EC)*1000)
 
     # Print section
     print("Dataset =", data_path)
@@ -123,11 +116,12 @@ def main():
                "\n- Running time (average over", R, "runs) =",\
                 time_estimate_NC,"ms")
 
-    print("Approximation through Spark partitions\n\
+    #***EDIT WHEN THEY PUT THE FILE***
+    print("Exact number of triangles\n\
 - Number of triangles =",\
-            triangle_estimate_Spark,\
+            triangle_exact,\
                "\n- Running time =",\
-                time_estimate_Spark,"ms")
+                time_estimate_EC,"ms")
   
 
 if __name__ == "__main__":
