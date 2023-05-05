@@ -8,6 +8,7 @@ from pyspark import SparkContext, SparkConf
 import sys, time, os
 import random as rand
 from CountTriangles import CountTriangles
+from CountTriangles2 import countTriangles2
 from operator import add
 from statistics import median, mean
 
@@ -52,7 +53,41 @@ def MR_ApproxTCwithNodeColors(edges, C):
 
 # Function 2 
 def MR_ExactTC(edges, C):
-  pass
+  
+  # Variables definition
+    pi = 8191
+    a = rand.randint(1, pi-1)
+    b = rand.randint(0, pi-1)
+    dictionary = {} # To retrieve previous calculated values and remove useless calculations
+
+  # Function that calculates the hash
+    def hash(vertex):
+        return ((a*vertex+b)%pi)%C
+
+  # Function that colors the edges
+    def color_per_edges(edges, C):
+          edge = edges[1] #(i,j) tuple
+          # Check if the hash was already calculated
+          if edge[0] in dictionary.keys(): hash_a = dictionary[edge[0]]
+          else: 
+              hash_a = hash(edge[0])
+              dictionary[edge[0]] = hash_a
+              
+          if edge[1] in dictionary.keys(): hash_b = dictionary[edge[1]]
+          else:                 
+             hash_b = hash(edge[1])
+             dictionary[edge[1]] = hash_b
+        # If the hashes of the two vertices are equal then emit (color,edge)
+        # else don't emit anything
+          return [ (tuple(sorted(hash_a, hash_b, c)), edge) for c in C]
+
+    partial_count = (edges.flatMap(color_per_edges, C)       #Map 1
+                        .groupByKey()                     #Shuffle (color,tuple)
+                        .flatMap(lambda x: [(0, countTriangles2(x[0], x[1], a, b, pi, C))])   #Reduce 1 (0,partial_c)
+                        .reduceByKey(add))                #Reduce 2
+
+    # take(n) returns a list with n tuples inside, [(key,value)]
+    return C**2*((partial_count.take(1)[0])[1]) 
 
 def main():
     # CHECKING NUMBER OF CMD LINE PARAMTERS
@@ -73,7 +108,7 @@ def main():
     rawData = sc.textFile(data_path)
     # Transform into a (key,edge) RDD where edge is tuple of ints
     edges = rawData.map(lambda line: ((rand.randint(0,part-1)), tuple(map(int, line.split(",")))))
-    edges = edges.repartition(C).cache()
+    edges = edges.repartition(part).cache()
     
     # Node color partitions
       # Data structures for saving the results
