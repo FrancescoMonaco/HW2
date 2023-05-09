@@ -157,6 +157,7 @@ def main():
     assert len(sys.argv) == 5, "Usage: python G047HW2.py <C> <R> <F> <file_name>"
     # SPARK SETUP
     conf = SparkConf().setAppName('TriangleCount')
+    conf.set("spark.locality.wait", "0s");
     sc = SparkContext(conf=conf)
     # Check types
     assert sys.argv[1].isdigit(), "C must be an int"
@@ -222,8 +223,8 @@ def main():
       print("Number of Colors =", C)
       print("Number of Repetitions =", R)
       print("Exact algorithm with node coloring\n\
-- Number of triangles (median over", R, "runs) =",\
-              triangle_estimate_EC,\
+- Number of triangles =",\
+              triangle_exact,\
                 "\n- Running time (average over", R, "runs) =",\
                   time_estimate_EC,"ms")
 
