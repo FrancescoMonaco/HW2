@@ -11,6 +11,66 @@ from CountTriangles import CountTriangles
 from CountTriangles2 import countTriangles2
 from operator import add
 from statistics import median, mean
+from collections import defaultdict
+
+def CountTriangles(edges):
+    # Create a defaultdict to store the neighbors of each vertex
+    neighbors = defaultdict(set)
+    for edge in edges:
+        u, v = edge
+        neighbors[u].add(v)
+        neighbors[v].add(u)
+
+    # Initialize the triangle count to zero
+    triangle_count = 0
+
+    # Iterate over each vertex in the graph.
+    # To avoid duplicates, we count a triangle <u, v, w> only if u<v<w
+    for u in neighbors:
+        # Iterate over each pair of neighbors of u
+        for v in neighbors[u]:
+            if v > u:
+                for w in neighbors[v]:
+                    # If w is also a neighbor of u, then we have a triangle
+                    if w > v and w in neighbors[u]:
+                        triangle_count += 1
+    # Return the total number of triangles in the graph
+    return triangle_count
+
+def countTriangles2(colors_tuple, edges, rand_a, rand_b, p, num_colors):
+    #We assume colors_tuple to be already sorted by increasing colors. Just transform in a list for simplicity
+    colors = list(colors_tuple)  
+    #Create a dictionary for adjacency list
+    neighbors = defaultdict(set)
+    #Creare a dictionary for storing node colors
+    node_colors = dict()
+    for edge in edges:
+
+        u, v = edge
+        node_colors[u]= ((rand_a*u+rand_b)%p)%num_colors
+        node_colors[v]= ((rand_a*v+rand_b)%p)%num_colors
+        neighbors[u].add(v)
+        neighbors[v].add(u)
+
+    # Initialize the triangle count to zero
+    triangle_count = 0
+
+    # Iterate over each vertex in the graph
+    for v in neighbors:
+        # Iterate over each pair of neighbors of v
+        for u in neighbors[v]:
+            if u > v:
+                for w in neighbors[u]:
+                    # If w is also a neighbor of v, then we have a triangle
+                    if w > u and w in neighbors[v]:
+                        # Sort colors by increasing values
+                        triangle_colors = sorted((node_colors[u], node_colors[v], node_colors[w]))
+                        # If triangle has the right colors, count it.
+                        if colors==triangle_colors:
+                            triangle_count += 1
+    # Return the total number of triangles in the graph
+    return triangle_count
+
 
 # Function 1
 def MR_ApproxTCwithNodeColors(edges, C):
@@ -61,11 +121,12 @@ def MR_ExactTC(edges, C):
     dictionary = {} # To retrieve previous calculated values and remove useless calculations
 
   # Function that calculates the hash
+
     def hash(vertex):
         return ((a*vertex+b)%pi)%C
 
   # Function that colors the edges
-    def color_per_edges(edges, C):
+    def color_per_edges(edges, C=16):
           edge = edges[1] #(i,j) tuple
           # Check if the hash was already calculated
           if edge[0] in dictionary.keys(): hash_a = dictionary[edge[0]]
@@ -79,15 +140,17 @@ def MR_ExactTC(edges, C):
              dictionary[edge[1]] = hash_b
         # If the hashes of the two vertices are equal then emit (color,edge)
         # else don't emit anything
-          return [ (tuple(sorted(hash_a, hash_b, c)), edge) for c in C]
+	
+          #print([ (tuple(sorted((hash_a, hash_b, c)), edge) for c in range(C)])
+          return [ (tuple(sorted((hash_a, hash_b, c))), edge) for c in range(C)]
 
-    partial_count = (edges.flatMap(color_per_edges, C)       #Map 1
+    partial_count = (edges.flatMap(color_per_edges)       #Map 1
                         .groupByKey()                     #Shuffle (color,tuple)
                         .flatMap(lambda x: [(0, countTriangles2(x[0], x[1], a, b, pi, C))])   #Reduce 1 (0,partial_c)
                         .reduceByKey(add))                #Reduce 2
 
     # take(n) returns a list with n tuples inside, [(key,value)]
-    return C**2*((partial_count.take(1)[0])[1]) 
+    return (partial_count.take(1)[0])[1] 
 
 def main():
     # CHECKING NUMBER OF CMD LINE PARAMTERS
@@ -132,7 +195,7 @@ def main():
       #Execution
     for i in range(R):
         start = time.time()
-        results_NC.append(MR_ExactTC(edges, C))
+        results_EC.append(MR_ExactTC(edges, C))
         end = time.time()
         times_EC.append(end-start)
       #Results
