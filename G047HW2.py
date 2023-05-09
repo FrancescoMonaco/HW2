@@ -7,12 +7,13 @@ HW2 - Group 47
 from pyspark import SparkContext, SparkConf
 import sys, time, os
 import random as rand
-from CountTriangles import CountTriangles
-from CountTriangles2 import countTriangles2
+#from CountTriangles import CountTriangles
+#from CountTriangles2 import countTriangles2
 from operator import add
 from statistics import median, mean
 from collections import defaultdict
 
+# CountTriangles for the first method
 def CountTriangles(edges):
     # Create a defaultdict to store the neighbors of each vertex
     neighbors = defaultdict(set)
@@ -37,6 +38,7 @@ def CountTriangles(edges):
     # Return the total number of triangles in the graph
     return triangle_count
 
+# CountTriangles for the second method
 def countTriangles2(colors_tuple, edges, rand_a, rand_b, p, num_colors):
     #We assume colors_tuple to be already sorted by increasing colors. Just transform in a list for simplicity
     colors = list(colors_tuple)  
@@ -162,11 +164,13 @@ def main():
     assert sys.argv[1].isdigit(), "C must be an int"
     assert sys.argv[2].isdigit(), "R must be an int"
     # Take the parameters
-    part = 16 # Base num of partitions
+    part = 32 # Base num of partitions
     C = int(sys.argv[1])
     R = int(sys.argv[2])
     data_path = sys.argv[3]
-    assert os.path.isfile(data_path), "File or folder not found"
+    # We remove the assert since it doesn't work with DFSs
+    #assert os.path.isfile(data_path), "File or folder not found"
+
     # Load the input as an RDD textfile
     rawData = sc.textFile(data_path)
     # Transform into a (key,edge) RDD where edge is tuple of ints
