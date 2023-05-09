@@ -7,8 +7,6 @@ HW2 - Group 47
 from pyspark import SparkContext, SparkConf
 import sys, time, os
 import random as rand
-#from CountTriangles import CountTriangles
-#from CountTriangles2 import countTriangles2
 from operator import add
 from statistics import median, mean
 from collections import defaultdict
@@ -156,18 +154,20 @@ def MR_ExactTC(edges, C):
 
 def main():
     # CHECKING NUMBER OF CMD LINE PARAMTERS
-    assert len(sys.argv) == 4, "Usage: python G047HW2.py <C> <R> <file_name>"
+    assert len(sys.argv) == 5, "Usage: python G047HW2.py <C> <R> <F> <file_name>"
     # SPARK SETUP
     conf = SparkConf().setAppName('TriangleCount')
     sc = SparkContext(conf=conf)
     # Check types
     assert sys.argv[1].isdigit(), "C must be an int"
     assert sys.argv[2].isdigit(), "R must be an int"
+    assert sys.argv[3].isdigit(), "F must be an int"
     # Take the parameters
     part = 32 # Base num of partitions
     C = int(sys.argv[1])
     R = int(sys.argv[2])
-    data_path = sys.argv[3]
+    F = int(sys.argv[3])
+    data_path = sys.argv[4]
     # We remove the assert since it doesn't work with DFSs
     #assert os.path.isfile(data_path), "File or folder not found"
 
@@ -177,53 +177,56 @@ def main():
     edges = rawData.map(lambda line: ((rand.randint(0,part-1)), tuple(map(int, line.split(",")))))
     edges = edges.repartition(part).cache()
     
-    # Node color partitions
-      # Data structures for saving the results
-    results_NC = []
-    times_NC = []
-      #Execution
-    for i in range(R):
-        start = time.time()
-        results_NC.append(MR_ApproxTCwithNodeColors(edges, C))
-        end = time.time()
-        times_NC.append(end-start)
-      #Results
-    triangle_estimate_NC = median(results_NC)
-        #*1000 from sec to ms, int to truncate the value
-    time_estimate_NC = int(mean(times_NC)*1000)
-    
-    # Exact count
-      # Data structures for saving the results
-    results_EC = []
-    times_EC = []
-      #Execution
-    for i in range(R):
-        start = time.time()
-        results_EC.append(MR_ExactTC(edges, C))
-        end = time.time()
-        times_EC.append(end-start)
-      #Results
-    triangle_exact = results_EC[-1]
-        #*1000 from sec to ms, int to truncate the value
-    time_estimate_EC = int(mean(times_EC)*1000)
-
-    # Print section
-    print("Dataset =", data_path)
-    print("Number of Edges =", edges.count())
-    print("Number of Colors =", C)
-    print("Number of Repetitions =", R)
-    print("Approximation through node coloring\n\
+    if F==0:
+      # Node color partitions
+        # Data structures for saving the results
+      results_NC = []
+      times_NC = []
+        #Execution
+      for i in range(R):
+          start = time.time()
+          results_NC.append(MR_ApproxTCwithNodeColors(edges, C))
+          end = time.time()
+          times_NC.append(end-start)
+        #Results
+      triangle_estimate_NC = median(results_NC)
+          #*1000 from sec to ms, int to truncate the value
+      time_estimate_NC = int(mean(times_NC)*1000)
+        # Print section
+      print("Dataset =", data_path)
+      print("Number of Edges =", edges.count())
+      print("Number of Colors =", C)
+      print("Number of Repetitions =", R)
+      print("Approximation algorithm with node coloring\n\
 - Number of triangles (median over", R, "runs) =",\
-            triangle_estimate_NC,\
-               "\n- Running time (average over", R, "runs) =",\
-                time_estimate_NC,"ms")
+              triangle_estimate_NC,\
+                "\n- Running time (average over", R, "runs) =",\
+                  time_estimate_NC,"ms")
+    elif F==1:
+      # Exact count
+        # Data structures for saving the results
+      results_EC = []
+      times_EC = []
+        #Execution
+      for i in range(R):
+          start = time.time()
+          results_EC.append(MR_ExactTC(edges, C))
+          end = time.time()
+          times_EC.append(end-start)
+        #Results
+      triangle_exact = results_EC[-1]
+          #*1000 from sec to ms, int to truncate the value
+      time_estimate_EC = int(mean(times_EC)*1000)
+      print("Dataset =", data_path)
+      print("Number of Edges =", edges.count())
+      print("Number of Colors =", C)
+      print("Number of Repetitions =", R)
+      print("Exact algorithm with node coloring\n\
+- Number of triangles (median over", R, "runs) =",\
+              triangle_estimate_EC,\
+                "\n- Running time (average over", R, "runs) =",\
+                  time_estimate_EC,"ms")
 
-    #***EDIT WHEN THEY PUT THE FILE***
-    print("Exact number of triangles\n\
-- Number of triangles =",\
-            triangle_exact,\
-               "\n- Running time =",\
-                time_estimate_EC,"ms")
   
 
 if __name__ == "__main__":
